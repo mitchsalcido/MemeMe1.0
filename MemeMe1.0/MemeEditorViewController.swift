@@ -34,17 +34,17 @@ class MemeEditorViewController: UIViewController, UIImagePickerControllerDelegat
     let PHOTO_ASPECT_FIT = "FIT"    // toggleContentAspectBbi -> FIT
     let PHOTO_ASPECT_FILL = "FILL"  // toggleContentAspectBbi -> FILL
     
-    // outlets to UI elements
-    var shareMemeBbi: UIBarButtonItem!                          // share meme
-    var cancelMemeEditingBbi: UIBarButtonItem!                  // cancel meme editing
-    var cameraBbi: UIBarButtonItem!                             // pick photo with camera
-    var albumBbi: UIBarButtonItem!                              // pick photo from album
-    var selectTextFontBbi: UIBarButtonItem!                     // select text font
-    var selectTextColorBbi: UIBarButtonItem!                    // select text color
-    var toggleContentAspectBbi: UIBarButtonItem!                // toggle image aspect
-    @IBOutlet weak var memeImageView: UIImageView!              // contiain meme image
-    var topTextField: UITextField!                              // top meme textField
-    var bottomTextField: UITextField!                           // bottom meme textField
+    // outlets to UI objects
+    var shareMemeBbi: UIBarButtonItem!              // share meme
+    var cancelMemeEditingBbi: UIBarButtonItem!      // cancel meme editing
+    var cameraBbi: UIBarButtonItem!                 // pick photo with camera
+    var albumBbi: UIBarButtonItem!                  // pick photo from album
+    var selectTextFontBbi: UIBarButtonItem!         // select text font
+    var selectTextColorBbi: UIBarButtonItem!        // select text color
+    var toggleContentAspectBbi: UIBarButtonItem!    // toggle image aspect
+    @IBOutlet weak var memeImageView: UIImageView!  // contiain meme image
+    var topTextField: UITextField!                  // top meme textField
+    var bottomTextField: UITextField!               // bottom meme textField
     
     var originalImage: UIImage! // reference to original image, currently being edited
     
@@ -95,7 +95,7 @@ class MemeEditorViewController: UIViewController, UIImagePickerControllerDelegat
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        // configure App intro and UI
+        // configure App and initial UI state
         title = MEME_EDITOR_TITLE
         self.navigationController?.setToolbarHidden(false, animated: false)
         createBarButtonItems()
@@ -180,6 +180,7 @@ class MemeEditorViewController: UIViewController, UIImagePickerControllerDelegat
             return
         }
         
+        // set delegate and present
         controller.delegate = self
         present(controller, animated: true, completion: {})
     }
@@ -199,36 +200,28 @@ class MemeEditorViewController: UIViewController, UIImagePickerControllerDelegat
         updateBackingViewFrame()
     }
     
-    @objc func selectTextFontBbiPressed(_ sender: UIBarButtonItem) {
-
-         // update text font. Cycle through textAttributeNameArray as button pressed
-        fontIndex += 1
-        if fontIndex >= textAttributeNameArray.count {
-            fontIndex = 0
+    @objc func fontColorBbiPressed(_ sender: UIBarButtonItem) {
+        
+        // update text font or color.
+        switch sender {
+        case selectTextFontBbi:
+            // update text font. Cycle through textAttributeNameArray as button pressed
+           fontIndex += 1
+           if fontIndex >= textAttributeNameArray.count {
+               fontIndex = 0
+           }
+        case selectTextColorBbi:
+            // update text color. Cycle through textColorArray as button pressed
+            colorIndex += 1
+            if colorIndex >= textColorArray.count {
+                colorIndex = 0
+            }
+        default:
+            break
         }
         
-        let attributes = createTextAttribute(name: textAttributeNameArray[fontIndex],
-                                             color: textColorArray[colorIndex])
-        topTextField.defaultTextAttributes = attributes
-        bottomTextField.defaultTextAttributes = attributes
-        topTextField.textAlignment = .center
-        bottomTextField.textAlignment = .center
-    }
-    
-    @objc func selectTextColorBbiPressed(_ sender: UIBarButtonItem) {
-        
-        // update text color. Cycle through textColorArray as button pressed
-        colorIndex += 1
-        if colorIndex >= textColorArray.count {
-            colorIndex = 0
-        }
-        
-        let attributes = createTextAttribute(name: textAttributeNameArray[fontIndex],
-                                             color: textColorArray[colorIndex])
-        topTextField.defaultTextAttributes = attributes
-        bottomTextField.defaultTextAttributes = attributes
-        topTextField.textAlignment = .center
-        bottomTextField.textAlignment = .center
+        // update text attrib's
+        updateTextFieldTextAttributes()
     }
 }
 
@@ -239,6 +232,18 @@ class MemeEditorViewController: UIViewController, UIImagePickerControllerDelegat
 
 // MARK: MemeEditorViewController helpers
 extension MemeEditorViewController {
+    
+    // update the top/bottom textField attribs with current font and color count index
+    func updateTextFieldTextAttributes() {
+        
+        // retrieve attributes and update
+        let attributes = createTextAttribute(name: textAttributeNameArray[fontIndex],
+                                             color: textColorArray[colorIndex])
+        topTextField.defaultTextAttributes = attributes
+        bottomTextField.defaultTextAttributes = attributes
+        topTextField.textAlignment = .center
+        bottomTextField.textAlignment = .center
+    }
     
     // create the meme image for sharing
     func createMemeSharingImage() -> UIImage? {
@@ -280,9 +285,7 @@ extension MemeEditorViewController {
 
         // Handles updating frame of backingView. Required when device rotates or when aspect is toggled
         guard let _ = backingView, var frame = memeImageView.imageFrame() else {
-            // bad backingView and/or imageFrame. Revert to default state
-            updateUI(.defaultState)
-            showAlert(MemeEditorError.memeImageError)
+            // applicable only when editing meme
             return
         }
         
@@ -461,13 +464,13 @@ extension MemeEditorViewController {
         selectTextFontBbi = UIBarButtonItem(title: FONT_BBI_NAME,
                                             style: .plain,
                                             target: self,
-                                            action: #selector(selectTextFontBbiPressed(_:)))
+                                            action: #selector(fontColorBbiPressed(_:)))
         
         // select text color
         selectTextColorBbi = UIBarButtonItem(title: COLOR_BBI_NAME,
                                              style: .plain,
                                              target: self,
-                                             action: #selector(selectTextColorBbiPressed(_:)))
+                                             action: #selector(fontColorBbiPressed(_:)))
     }
     
     // create a textAttribute
