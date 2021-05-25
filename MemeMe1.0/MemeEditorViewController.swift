@@ -48,6 +48,7 @@ class MemeEditorViewController: UIViewController, UIImagePickerControllerDelegat
     
     var originalImage: UIImage! // reference to original image, currently being edited
     
+    
     /*
      backingView: This view is the container for the textFields which are positioned at top and bottom
      of backingView using constraints. This view is placed as a subView of self.view, and is positioned
@@ -60,7 +61,7 @@ class MemeEditorViewController: UIViewController, UIImagePickerControllerDelegat
     var savedMemes = [Meme]()
     
     /*
-     index counters and arrays of fonts and colors to select (cycled through by pressing -Font/-Color Bbi).
+     index counters and arrays of preselected fonts and colors.
      User can customize text font and color by pressing FONT/COLOR Bbi. Pressing cycles through a present
      selection of fonts/color, with index counters tracking the currently selected font/color
      */
