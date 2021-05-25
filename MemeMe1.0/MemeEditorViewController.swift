@@ -123,7 +123,7 @@ class MemeEditorViewController: UIViewController, UIImagePickerControllerDelegat
         // update frame when rotated
         updateBackingViewFrame()
     }
-    
+
     @objc func shareMemeBbiPressed(_ sender: Any) {
 
         // Action for shareMemeBbi. Meme the image and invoke UIActivityViewController for sharing
@@ -154,12 +154,18 @@ class MemeEditorViewController: UIViewController, UIImagePickerControllerDelegat
                             self.showAlert(MemeEditorError.memeSharingError)
                         }
                     })
+            
+            // if used on iPad
+            if let popOver = controller.popoverPresentationController {
+                popOver.sourceView = self.view
+                popOver.barButtonItem = shareMemeBbi
+            }
         } else {
             updateUI(.defaultState)
             self.showAlert(MemeEditorError.memeImageError)
         }
     }
-    
+
     @objc func cancelEditingMemeBbiPressed(_ sender: Any) {
 
         // Action for Cancel BarButtonItem. Removes meme image currently being edited and restores app to default state
