@@ -6,8 +6,10 @@
 //
 /*
  About MemeEditorViewViewController.swift:
- UIViewController subclass used to manage Meme creation. Handles launching imagePicker to select a photo, Meme text editing, and meme sharing
+ UIViewController subclass used to manage Meme creation. Handles launching imagePicker to select a photo,
+ Meme text editing, and meme sharing.
  */
+
 import UIKit
 
 class MemeEditorViewController: UIViewController, UIImagePickerControllerDelegate, UINavigationControllerDelegate, UITextFieldDelegate {
@@ -20,7 +22,8 @@ class MemeEditorViewController: UIViewController, UIImagePickerControllerDelegat
     let MEME_EDITOR_TITLE = "Meme 1.0"          // app title
     let DEFAULT_TOP_TEXT = "TOP TEXT"           // default top text
     let DEFAULT_BOTTOM_TEXT = "BOTTOM TEXT"     // default bottom tex
-    let TEXT_SIZE: CGFloat = 40.0               // default text size
+    let DEFAULT_TEXT_SIZE: CGFloat = 40.0       // default text size
+    let MINIMUM_TEXT_SIZE: CGFloat = 20.0       // textField adjust font size. Place a limit
     let TEXT_STROKE_WIDTH: CGFloat = -3.0       // default stroke width
     let TEXT_STROKE_COLOR: UIColor = UIColor.black  // default stroke color
     
@@ -40,10 +43,10 @@ class MemeEditorViewController: UIViewController, UIImagePickerControllerDelegat
     var selectTextColorBbi: UIBarButtonItem!                    // select text color
     var toggleContentAspectBbi: UIBarButtonItem!                // toggle image aspect
     @IBOutlet weak var memeImageView: UIImageView!              // contiain meme image
-
     var topTextField: UITextField!                              // top meme textField
     var bottomTextField: UITextField!                           // bottom meme textField
-    var currentImage: UIImage!          // reference to image currently being edited
+    
+    var originalImage: UIImage! // reference to original image, currently being edited
     
     /*
      backingView: This view is the container for the textFields which are positioned at top and bottom
@@ -53,7 +56,14 @@ class MemeEditorViewController: UIViewController, UIImagePickerControllerDelegat
      */
     var backingView: UIView!
     
-    // index counters and arrays of fonts and colors to select (cycled through by pressing -Font/-Color Bbi)
+    // storage for memes saved...saved after sharing
+    var savedMemes = [Meme]()
+    
+    /*
+     index counters and arrays of fonts and colors to select (cycled through by pressing -Font/-Color Bbi).
+     User can customize text font and color by pressing FONT/COLOR Bbi. Pressing cycles through a present
+     selection of fonts/color, with index counters tracking the currently selected font/color
+     */
     var fontIndex = 0   // track currently selected font
     var colorIndex = 0  // track currently selected color
     
@@ -73,9 +83,9 @@ class MemeEditorViewController: UIViewController, UIImagePickerControllerDelegat
                       UIColor.green]
     
     /*
-     enum for Meme editing. Used to steer UI config.
-    defaultState: Show default image with app info
-    memeEditingState: memeImageView contains selected photo and text can be edited
+    enum for Meme editing. Used to steer UI config.
+        .defaultState: Show default image with app info
+        .memeEditingState: memeImageView contains selected photo and text can be edited
     */
     enum MemeEditingState {
         case defaultState
@@ -92,6 +102,20 @@ class MemeEditorViewController: UIViewController, UIImagePickerControllerDelegat
         updateUI(.defaultState)
     }
 
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        
+        // allow keyboard notifications. For shifting up view when bottom TextField is editing
+        subscribeToKeyboardNotifications()
+    }
+    
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        
+        // end keyboard notifications.
+        unsubscribeToKeyboardNotifications()
+    }
+    
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         
@@ -102,18 +126,36 @@ class MemeEditorViewController: UIViewController, UIImagePickerControllerDelegat
     @objc func shareMemeBbiPressed(_ sender: Any) {
 
         // Action for shareMemeBbi. Meme the image and invoke UIActivityViewController for sharing
-        if let image = createMemeSharingImage() {
+        if let memedImage = createMemeSharingImage() {
             // good memed image
             
             // activityVC, present
-            let controller = UIActivityViewController(activityItems: [image, DEFAULT_SHARED_MEME_MESSAGE],
+            let controller = UIActivityViewController(activityItems: [memedImage, DEFAULT_SHARED_MEME_MESSAGE],
                                                       applicationActivities: nil)
             present(controller,
                     animated: true,
                     completion: {
+                                                
+                        // save meme after sharing
+                        if let topText = self.topTextField.text,
+                           let bottomText = self.bottomTextField.text,
+                           let originalImage = self.originalImage {
+                            
+                            // good meme data. Save the meme
+                            let meme = Meme(topText: topText,
+                                            bottomText: bottomText,
+                                            originalImage: originalImage,
+                                            memedImage: memedImage)
+                            self.savedMemes.append(meme)
+                        } else {
+                            // bad meme data
+                            self.updateUI(.defaultState)
+                            self.showAlert(MemeEditorError.memeSharingError)
+                        }
                     })
         } else {
             updateUI(.defaultState)
+            self.showAlert(MemeEditorError.memeImageError)
         }
     }
     
@@ -128,6 +170,7 @@ class MemeEditorViewController: UIViewController, UIImagePickerControllerDelegat
 
         // Action for both Camera and Album BarButtonItem. Selects image source and invokes image picker.
         let controller = UIImagePickerController()
+        controller.allowsEditing = true // allow editing in picker
         switch sender {
         case cameraBbi:
             controller.sourceType = .camera
@@ -239,6 +282,7 @@ extension MemeEditorViewController {
         guard let _ = backingView, var frame = memeImageView.imageFrame() else {
             // bad backingView and/or imageFrame. Revert to default state
             updateUI(.defaultState)
+            showAlert(MemeEditorError.memeImageError)
             return
         }
         
@@ -253,7 +297,6 @@ extension MemeEditorViewController {
             frame.origin.y += memeImageView.frame.origin.y
             backingView.frame = frame
         default:
-            updateUI(.defaultState)
             break
         }
     }
@@ -306,7 +349,7 @@ extension MemeEditorViewController {
             memeImageView.image = UIImage(named: DEFAULT_PHOTO)
         case .memeEditingState:
             // update memeImageView with currentImage (just selected/snapped photo)
-            memeImageView.image = currentImage
+            memeImageView.image = originalImage
             
             // create backingView. Default state if bad image or frame
             if let view = createBackingView(imageView: memeImageView) {
@@ -314,6 +357,7 @@ extension MemeEditorViewController {
                 self.view.addSubview(backingView)
             } else {
                 updateUI(.defaultState)
+                showAlert(MemeEditorError.memeImageError)
             }
         }
     }
@@ -372,6 +416,12 @@ extension MemeEditorViewController {
         topTextField.textAlignment = .center
         bottomTextField.textAlignment = .center
         
+        // adjust font size for fit, include minimum limit
+        topTextField.adjustsFontSizeToFitWidth = true
+        bottomTextField.adjustsFontSizeToFitWidth = true
+        topTextField.minimumFontSize = MINIMUM_TEXT_SIZE
+        bottomTextField.minimumFontSize = MINIMUM_TEXT_SIZE
+        
         return uiView
     }
     
@@ -425,14 +475,67 @@ extension MemeEditorViewController {
         
         // test for valid font... default to system font
         var attributes: [NSAttributedString.Key: Any] = [NSAttributedString.Key.foregroundColor: color]
-        if let font = UIFont(name: name, size: TEXT_SIZE) {
+        if let font = UIFont(name: name, size: DEFAULT_TEXT_SIZE) {
             attributes[NSAttributedString.Key.strokeWidth] = TEXT_STROKE_WIDTH
             attributes[NSAttributedString.Key.strokeColor] = TEXT_STROKE_COLOR
             attributes[NSAttributedString.Key.font] = font
         } else {
-            attributes[NSAttributedString.Key.font] = UIFont.boldSystemFont(ofSize:TEXT_SIZE)
+            attributes[NSAttributedString.Key.font] = UIFont.boldSystemFont(ofSize:DEFAULT_TEXT_SIZE)
         }
         return attributes
+    }
+}
+
+// MARK: Keyboard view shift functions
+extension MemeEditorViewController {
+    
+    // add notification for keyboard presentation
+    func subscribeToKeyboardNotifications() {
+        
+        NotificationCenter.default.addObserver(self,
+                                               selector: #selector(keyboardWillShow(_:)),
+                                               name: UIResponder.keyboardWillShowNotification,
+                                               object: nil)
+        NotificationCenter.default.addObserver(self,
+                                               selector: #selector(keyboardWillHide(_:)),
+                                               name: UIResponder.keyboardWillHideNotification,
+                                               object: nil)
+    }
+
+    // remove notifications for keyboard
+    func unsubscribeToKeyboardNotifications() {
+        NotificationCenter.default.removeObserver(self,
+                                                  name: UIResponder.keyboardWillShowNotification, object: nil)
+        NotificationCenter.default.removeObserver(self,
+                                                  name: UIResponder.keyboardWillHideNotification, object: nil)
+    }
+    
+    // keyboard about to show
+    @objc func keyboardWillShow(_ notification: Notification) {
+        
+        // shift up only when bottom textField is editing
+        guard bottomTextField.isEditing else {
+            return
+        }
+        let shift = getKeyboardHeight(notification)
+        view.frame.origin.y -= shift
+    }
+    
+    // keybaord about to hide
+    @objc func keyboardWillHide(_ notification: Notification) {
+        
+        // shift down only if bottom keyboard is editing
+        guard bottomTextField.isEditing else {
+            return
+        }
+        view.frame.origin.y = 0
+    }
+    
+    // retrieve keyboard height
+    func getKeyboardHeight(_ notification: Notification) -> CGFloat {
+        let userInfo = notification.userInfo
+        let keyboardSize = userInfo![UIResponder.keyboardFrameEndUserInfoKey] as! NSValue
+        return keyboardSize.cgRectValue.height
     }
 }
 
@@ -440,21 +543,35 @@ extension MemeEditorViewController {
 extension MemeEditorViewController {
     
     func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+        // no photo selected. Dismiss
         dismiss(animated: true, completion: {})
     }
     
     func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
         
-        if let image = info[.originalImage] as? UIImage {
-            currentImage = image
-            dismiss(animated: true, completion: {
-                self.updateUI(.memeEditingState)
-            })
-        } else {
+        // finished picking image. Retrieve image. Test for original or edited version of image
+        var image: UIImage? = nil
+        if let editedImage = info[.editedImage] as? UIImage {
+            image = editedImage
+        } else if let originalImage = info[.originalImage] as? UIImage {
+            image = originalImage
+        }
+        
+        // test for good image
+        guard let _ = image else {
+            // bad image. Return to default state
             dismiss(animated: true, completion: {
                 self.updateUI(.defaultState)
+                self.showAlert(MemeEditorError.memeImageError)
             })
+            return
         }
+        
+        // good image. Assign and go to meme editing state
+        originalImage = image
+        dismiss(animated: true, completion: {
+            self.updateUI(.memeEditingState)
+        })
     }
 }
 
@@ -462,7 +579,20 @@ extension MemeEditorViewController {
 extension MemeEditorViewController {
     
     func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        
+        // return button pressed. End editing
         textField.resignFirstResponder()
+        
+        // enable share and cancel bbi's
+        shareMemeBbi.isEnabled = true
+        cancelMemeEditingBbi.isEnabled = true
         return true
+    }
+    
+    func textFieldDidBeginEditing(_ textField: UITextField) {
+        
+        // disable share and cancel bbi's while editing text
+        shareMemeBbi.isEnabled = false
+        cancelMemeEditingBbi.isEnabled = false
     }
 }
