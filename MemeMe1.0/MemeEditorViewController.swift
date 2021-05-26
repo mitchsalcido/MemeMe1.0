@@ -387,16 +387,11 @@ extension MemeEditorViewController {
         frame.origin.y += imageView.frame.origin.y
         let uiView = UIView(frame: frame)
         uiView.backgroundColor = UIColor.clear
-        uiView.alpha = 1.0
         
-        // top textField
+        // create top textField and configure
         topTextField = UITextField()
-        topTextField.delegate = self
-        topTextField.translatesAutoresizingMaskIntoConstraints = false
-        topTextField.text = DEFAULT_TOP_TEXT
-        topTextField.autocapitalizationType = .allCharacters
-        topTextField.borderStyle = .none
         uiView.addSubview(topTextField)
+        configureTextFields(textField: topTextField, defaultText: DEFAULT_TOP_TEXT)
         let ttfLeading = topTextField.leadingAnchor.constraint(equalTo: uiView.leadingAnchor)
         let ttfTrailing = topTextField.trailingAnchor.constraint(equalTo: uiView.trailingAnchor)
         let ttfTop = topTextField.topAnchor.constraint(equalTo: uiView.topAnchor, constant: 20)
@@ -404,36 +399,35 @@ extension MemeEditorViewController {
         ttfTrailing.isActive = true
         ttfTop.isActive = true
         
-        // bottom textField
+        // create bottom textField and configure
         bottomTextField = UITextField()
-        bottomTextField.delegate = self
-        bottomTextField.translatesAutoresizingMaskIntoConstraints = false
-        bottomTextField.text = DEFAULT_BOTTOM_TEXT
-        bottomTextField.autocapitalizationType = .allCharacters
-        bottomTextField.borderStyle = .none
         uiView.addSubview(bottomTextField)
+        configureTextFields(textField: bottomTextField, defaultText: DEFAULT_BOTTOM_TEXT)
         let btfLeading = bottomTextField.leadingAnchor.constraint(equalTo: uiView.leadingAnchor)
         let btfTrailing = bottomTextField.trailingAnchor.constraint(equalTo: uiView.trailingAnchor)
         let btfTop = bottomTextField.bottomAnchor.constraint(equalTo: uiView.bottomAnchor, constant: -20)
         btfLeading.isActive = true
         btfTrailing.isActive = true
         btfTop.isActive = true
+
+        return uiView
+    }
+    
+    // configure a textField with default config
+    func configureTextFields(textField: UITextField, defaultText: String) {
+
+        // set default properties
+        textField.delegate = self
+        textField.translatesAutoresizingMaskIntoConstraints = false
+        textField.text = defaultText
+        textField.autocapitalizationType = .allCharacters
+        textField.borderStyle = .none
         
         // assign text attrib. Use default at index 0 from arrays
         let textAttibutes = createTextAttribute(name: textAttributeNameArray[0],
                                                    color: textColorArray[0])
-        topTextField.defaultTextAttributes = textAttibutes
-        bottomTextField.defaultTextAttributes = textAttibutes
-        topTextField.textAlignment = .center
-        bottomTextField.textAlignment = .center
-        
-        // adjust font size for fit, include minimum limit
-        topTextField.adjustsFontSizeToFitWidth = true
-        bottomTextField.adjustsFontSizeToFitWidth = true
-        topTextField.minimumFontSize = MINIMUM_TEXT_SIZE
-        bottomTextField.minimumFontSize = MINIMUM_TEXT_SIZE
-        
-        return uiView
+        textField.defaultTextAttributes = textAttibutes
+        textField.textAlignment = .center
     }
     
     // create and config UIBarButtonItems used in app
