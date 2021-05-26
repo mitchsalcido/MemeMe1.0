@@ -273,8 +273,8 @@ extension MemeEditorViewController {
         // if aspectFit, need to offset origin on tempImage
         if memeImageView.contentMode == .scaleAspectFit {
             if let frame = memeImageView.imageFrame() {
-            tempImageView.frame.origin.x = frame.origin.x * -1.0
-            tempImageView.frame.origin.y = frame.origin.y * -1.0
+            tempImageView.frame.origin.x = -frame.origin.x
+            tempImageView.frame.origin.y = -frame.origin.y
             } else {
                 return nil
             }
