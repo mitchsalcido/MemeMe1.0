@@ -130,39 +130,40 @@ class MemeEditorViewController: UIViewController, UIImagePickerControllerDelegat
         if let memedImage = createMemeSharingImage() {
             // good memed image
             
-            // activityVC, present
+            // activityVC
             let controller = UIActivityViewController(activityItems: [memedImage, DEFAULT_SHARED_MEME_MESSAGE],
                                                       applicationActivities: nil)
+            
+            // completion for activityVC
+            controller.completionWithItemsHandler = {(activity, completed, items, error) in
+                
+                //  Verify operation complete before saving.
+                if completed {
+                    
+                    // Verify good data before saving
+                    if let topText = self.topTextField.text,
+                       let bottomText = self.bottomTextField.text,
+                       let originalImage = self.originalImage {
+                        
+                        let meme = Meme(topText: topText,
+                                        bottomText: bottomText,
+                                        originalImage: originalImage,
+                                        memedImage: memedImage)
+                        self.savedMemes.append(meme)
+                    }
+                }
+            }
+            
+            // present
             present(controller,
                     animated: true,
-                    completion: {
-                                                
-                        // save meme after sharing
-                        if let topText = self.topTextField.text,
-                           let bottomText = self.bottomTextField.text,
-                           let originalImage = self.originalImage {
-                            
-                            // good meme data. Save the meme
-                            let meme = Meme(topText: topText,
-                                            bottomText: bottomText,
-                                            originalImage: originalImage,
-                                            memedImage: memedImage)
-                            self.savedMemes.append(meme)
-                        } else {
-                            // bad meme data
-                            self.updateUI(.defaultState)
-                            self.showAlert(MemeEditorError.memeSharingError)
-                        }
-                    })
+                    completion: nil)
             
             // if used on iPad
             if let popOver = controller.popoverPresentationController {
                 popOver.sourceView = self.view
                 popOver.barButtonItem = shareMemeBbi
             }
-        } else {
-            updateUI(.defaultState)
-            self.showAlert(MemeEditorError.memeImageError)
         }
     }
 
